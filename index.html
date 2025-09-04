@@ -7,7 +7,7 @@
     <!-- React 라이브러리 -->
     <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-    <!-- Babel (JSX 번역기) - 최신 버전으로 수정 -->
+    <!-- Babel (JSX 번역기) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Tailwind CSS (스타일링) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,190 +19,229 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // framer-motion은 지금 쓸 수 없어서, 그냥 div로 감싸줍니다.
         const MotionDiv = ({ children }) => <div>{children}</div>;
         const AnimatePresence = ({ children }) => <>{children}</>;
 
-        // Firebase 관련 기능은 이 파일에서 직접 동작시킬 수 없으므로 주석 처리합니다.
-        // 데이터 저장/불러오기 기능은 동작하지 않지만, UI는 볼 수 있습니다.
+        const CharacterCounter = ({ text = '' }) => {
+            const length = text.length;
+            let max = 100;
+            if (length > 1000) {
+                max = Math.ceil(length / 1000) * 1000;
+            } else if (length > 100) {
+                max = 1000;
+            }
+            return (
+                <div className="text-right text-xs text-gray-500 mt-1 pr-1">
+                    {length} / {max}
+                </div>
+            );
+        };
 
         const LegalReportGenerator = () => {
           const [currentStep, setCurrentStep] = useState(1);
           const [selectedType, setSelectedType] = useState('');
+          const [selectedCivilType, setSelectedCivilType] = useState('');
+          const [selectedFamilyType, setSelectedFamilyType] = useState('');
           const [selectedSubType, setSelectedSubType] = useState('');
+          const [selectedCrimeType, setSelectedCrimeType] = useState('');
+          const [selectedPropertyCrimeType, setSelectedPropertyCrimeType] = useState('');
+
           const [formData, setFormData] = useState({});
           const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-          const [reports, setReports] = useState([]); // 지금은 빈 배열로 유지됩니다.
-          const [showReportsList, setShowReportsList] = useState(false);
+          
           const [statusMessage, setStatusMessage] = useState('');
           const [generatedReport, setGeneratedReport] = useState('');
 
-          // 사건 유형 데이터 (아이콘을 SVG 코드로 직접 포함)
+          // --- 데이터 정의 ---
           const caseTypes = [
-            { id: 'civil', name: '민사', color: 'bg-blue-500', 
-              iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M16 16l3-8 3 8H16z"></path><path d="M2 16l3-8 3 8H2z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h18"></path></svg>` 
-            },
-            { id: 'criminal', name: '형사', color: 'bg-red-500', hasSubTypes: true,
-              iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`
-            },
-            { id: 'administrative', name: '행정', color: 'bg-green-500',
-              iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/><rect x="9" y="9" width="2" height="2"/><rect x="13" y="9" width="2" height="2"/><rect x="9" y="13" width="2" height="2"/><rect x="13" y="13" width="2" height="2"/></svg>`
-            },
-            { id: 'school', name: '학교폭력', color: 'bg-purple-500', hasSubTypes: true,
-              iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`
-            }
+            { id: 'civil', name: '민사', color: 'bg-blue-500', hasSubTypes: true, iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M16 16l3-8 3 8H16z"></path><path d="M2 16l3-8 3 8H2z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h18"></path></svg>` },
+            { id: 'criminal', name: '형사', color: 'bg-red-500', hasSubTypes: true, iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>` },
+            { id: 'family', name: '가사사건', color: 'bg-pink-500', hasSubTypes: true, iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>` },
+            { id: 'administrative', name: '행정', color: 'bg-green-500', iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/><rect x="9" y="9" width="2" height="2"/><rect x="13" y="9" width="2" height="2"/><rect x="9" y="13" width="2" height="2"/><rect x="13" y="13" width="2" height="2"/></svg>` },
+            { id: 'school', name: '학교폭력', color: 'bg-purple-500', hasSubTypes: true, iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>` },
+            { id: 'other', name: '기타', color: 'bg-gray-500', iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>` }
           ];
+          const civilTypes = [ { id: 'lease', name: '임대차' }, { id: 'contractual-payment', name: '약정금' }, { id: 'damages', name: '손해배상' }, { id: 'other', name: '기타' } ];
+          const familyTypes = [ { id: 'divorce', name: '이혼' }, { id: 'inheritance', name: '상속' }, { id: 'other', name: '기타' }];
+          const subTypes = { criminal: [{ id: 'accusation', name: '고소 및 고발' }, { id: 'suspect', name: '피의사건' }], school: [{ id: 'victim', name: '피해관련학생' }, { id: 'perpetrator', name: '가해관련학생' }] };
+          const crimeTypes = [ { id: 'property', name: '재산범죄', hasSubTypes: true }, { id: 'traffic', name: '교통범죄' }, { id: 'sexual', name: '성범죄' }, { id: 'other', name: '기타' } ];
+          const propertyCrimeTypes = [ { id: 'fraud', name: '사기' }, { id: 'embezzlement', name: '횡령·배임' }, { id: 'theft', name: '절도·강도·공갈' } ];
 
-          const subTypes = {
-            criminal: [{ id: 'accusation', name: '고소 및 고발' }, { id: 'suspect', name: '피의사건' }],
-            school: [{ id: 'victim', name: '피해관련학생(신고자)' }, { id: 'perpetrator', name: '가해관련학생' }]
-          };
+          // --- 재사용 가능한 질문 객체 ---
+          const selfInfoFields = (prefix = 'self') => ({ key: `${prefix}_info`, label: '본인 정보', type: 'parties', description: '(공란으로 두어도 무방합니다)', fields: [ { key: `${prefix}_name`, label: '이름', placeholder: '본인 성명' }, { key: `${prefix}_address`, label: '주소', placeholder: '본인 주소' }, { key: `${prefix}_phone`, label: '전화번호', placeholder: '본인 전화번호' } ] });
+          const schoolSelfInfoFields = (prefix = 'self') => ({ key: `${prefix}_info`, label: '본인 정보', type: 'parties', description: '(공란으로 두어도 무방합니다)', fields: [ { key: `${prefix}_name`, label: '이름', placeholder: '학생 성명' }, { key: `${prefix}_school`, label: '학교', placeholder: '학교명' }, { key: `${prefix}_grade`, label: '학년', placeholder: '학년' }, { key: `${prefix}_class`, label: '반', placeholder: '반' } ]});
+          const singleOpponentInfoFields = (label = '상대방') => ({ key: 'opponent_info', label: `${label} 정보`, type: 'parties', description: `(공란으로 둘 경우 '정보 불상'으로 처리됩니다)`, fields: [ { key: 'opponent_name', label: '이름', placeholder: `${label} 성명` }, { key: 'opponent_phone', label: '연락처', placeholder: `${label} 연락처` } ] });
+          const multiplePartiesQuestion = (partyName, partyKey, fields, label = `${partyName} 정보`) => ({ key: partyKey, label, type: 'multipleParties', partyName, partyKey, fields, description: `(공란으로 둘 경우 '정보 불상'으로 처리됩니다)` });
+          const partiesRelationshipQuestion = (placeholder) => ({ key: 'parties_relationship', label: '당사자 관계', placeholder: placeholder || '상대방과 어떤 관계인지 구체적으로 작성해주세요.' });
+          const incidentTimePlaceQuestion = { key: 'incident_time_place', label: '사건의 발생 시기와 장소', placeholder: '(사안이 수 회인 경우 날짜와 시간 순서로 구분하여 정리해주세요)'};
+          const otherMattersQuestion = { key: 'other_matters', label: '기타 사항', placeholder: '추가적으로 기재해야할 사항을 모두 적어주세요.'};
+          const contractDetailsQuestion = { key: 'contract_details', label: '계약의 내용', description: '(없을 경우 공란으로 두셔도 무방합니다)', placeholder: '계약의 주요 내용을 기재해주세요.' };
+          const disputeDetailsQuestion = { key: 'dispute_details', label: '분쟁 발생 경위' };
+          const demandsQuestion = { key: 'demands', label: '요구 사항' };
+          const isSelfMinorQuestion = { key: 'is_minor_check', label: '본인 미성년자 여부', type: 'yesno', fields: [{ key: 'is_minor', label: '본인은 미성년자입니까?' }] };
+          const isOpponentMinorQuestion = { key: 'opponent_minor_check', label: '상대방 미성년자 여부', type: 'yesno', fields: [{ key: 'is_opponent_minor', label: '상대방은 미성년자입니까?' }] };
+
+          // --- 질문 세트 ---
+          const commonCivilQuestions = [ selfInfoFields(), multiplePartiesQuestion('상대방', 'opponents', [{key: 'name', label: '이름'}, {key: 'phone', label: '연락처'}]), contractDetailsQuestion, disputeDetailsQuestion, demandsQuestion, otherMattersQuestion ];
+          const divorceQuestions = [ selfInfoFields(), singleOpponentInfoFields('상대방'), { key: 'family_relations', label: '가족 관계' }, disputeDetailsQuestion, demandsQuestion, otherMattersQuestion ];
+          const commonFamilyQuestions = [ selfInfoFields(), multiplePartiesQuestion('상대방', 'opponents', [{key: 'name', label: '이름'}, {key: 'phone', label: '연락처'}]), { key: 'family_relations', label: '가족 관계' }, disputeDetailsQuestion, demandsQuestion, otherMattersQuestion ];
+          const schoolOpponentFields = [{key: 'name', label: '이름'}, {key: 'school', label: '학교'}, {key: 'grade', label: '학년'}, {key: 'class', label: '반'}];
+          const criminalOpponentFields = [{key: 'name', label: '이름'}, {key: 'phone', label: '연락처'}];
 
           const questionSets = {
-             civil: [{key: 'self_parties', label: '본인 정보', type: 'parties', fields: [{ key: 'self_name', label: '이름', placeholder: '본인 성명' },{ key: 'self_address', label: '주소', placeholder: '본인 주소' },{ key: 'self_phone', label: '전화번호', placeholder: '본인 전화번호' }]},{key: 'other_parties', label: '상대방 정보', type: 'parties', fields: [{ key: 'other_name', label: '이름', placeholder: '상대방 성명' },{ key: 'other_address', label: '주소', placeholder: '상대방 주소' },{ key: 'other_phone', label: '전화번호', placeholder: '상대방 전화번호' }]},{ key: 'dispute_timing', label: '분쟁 발생 시기', placeholder: '분쟁이 언제부터 시작되었나요?' },{ key: 'contract_type', label: '계약 유형 또는 권리 침해 내용', placeholder: '어떤 계약을 체결했는지 기술해주세요.' },{ key: 'incident_detail', label: '분쟁 발생 경위', placeholder: '구체적으로 어떤 문제가 발생했는지 기술해주세요.' },{ key: 'damage', label: '피해 내용', placeholder: '구체적인 피해 금액이나 손해 상황을 설명해주세요.' },{ key: 'claim', label: '요구 사항', placeholder: '상대방에게 무엇을 요구하는지 기술해주세요.' }],
-            'criminal-accusation': [{key: 'accuser_parties',label: '고소인 정보',type: 'parties',fields: [{ key: 'accuser_name', label: '이름', placeholder: '고소인 성명' },{ key: 'accuser_address', label: '주소', placeholder: '고소인 주소' },{ key: 'accuser_phone', label: '전화번호', placeholder: '고소인 전화번호' }]},{key: 'accused_parties',label: '피고소인 정보',type: 'parties',fields: [{ key: 'accused_name', label: '이름', placeholder: '피고소인 성명 (모르면 "성명불상")' },{ key: 'accused_address', label: '주소', placeholder: '피고소인 주소 (모르면 "주소불상")' },{ key: 'accused_phone', label: '전화번호', placeholder: '피고소인 전화번호 (모르면 생략 가능)' }]},{ key: 'incident_time', label: '사건 발생 일시', placeholder: '정확한 날짜와 시간을 기입해주세요.' },{ key: 'incident_place', label: '사건 발생 장소', placeholder: '구체적인 주소나 장소명' },{ key: 'incident_detail', label: '사건 경위', placeholder: '무슨 일이 어떻게 일어났는지 상세히 기술해주세요.' },{ key: 'witness', label: '목격자/증인', placeholder: '현장을 목격한 사람이 있다면 기술해주세요.' },{ key: 'report_reason', label: '신고 경위', placeholder: '왜 신고하게 되었는지 기술해주세요.' }],
-            'criminal-suspect': [{key: 'self_parties',label: '본인 정보',type: 'parties',fields: [{ key: 'self_name', label: '이름', placeholder: '본인 성명' },{ key: 'self_address', label: '주소', placeholder: '본인 주소' },{ key: 'self_phone', label: '전화번호', placeholder: '본인 전화번호' }]},{key: 'accuser_parties',label: '고소인 정보',type: 'parties',fields: [{ key: 'accuser_name', label: '이름', placeholder: '고소인 성명' },{ key: 'accuser_address', label: '주소', placeholder: '고소인 주소 (모르면 생략 가능)' },{ key: 'accuser_phone', label: '전화번호', placeholder: '고소인 전화번호 (모르면 생략 가능)' }]},{ key: 'incident_time', label: '사건 발생 시간', placeholder: '사건이 발생했다고 하는 날짜와 시간' },{ key: 'incident_place', label: '사건 발생 장소', placeholder: '사건이 발생했다고 하는 장소' },{ key: 'incident_detail', label: '사건 경위', placeholder: '본인의 입장에서 상세히 기술해주세요.' },{ key: 'request', label: '요구 사항', placeholder: '무혐의 처분 등 원하는 결과' }],
-            administrative: [{ key: 'disposition', label: '행정처분 내용', placeholder: '받은 처분의 구체적 내용을 기술해주세요.' },{ key: 'disposition_date', label: '처분 통지일', placeholder: '처분을 통지받은 날짜' },{ key: 'objection_reason', label: '불복 사유', placeholder: '처분이 부당하다고 생각하는 이유' },{ key: 'related_law', label: '관련 법령', placeholder: '위반했다고 하는 법령' },{ key: 'request', label: '요구 사항', placeholder: '처분 취소 등 원하는 조치' }],
-            'school-victim': [{key: 'victim_parties',label: '피해학생 정보',type: 'parties',fields: [{ key: 'victim_name', label: '이름', placeholder: '피해학생 성명' },{ key: 'victim_school', label: '소속', placeholder: '학교명, 학년, 반' },{ key: 'victim_parent', label: '보호자 성명', placeholder: '보호자 성명' },{ key: 'victim_phone', label: '보호자 연락처', placeholder: '보호자 연락처' }]},{key: 'perpetrator_parties',label: '가해학생 정보',type: 'parties',fields: [{ key: 'perpetrator_name', label: '이름', placeholder: '가해학생 성명' },{ key: 'perpetrator_school', label: '소속', placeholder: '학교명, 학년, 반' }]},{ key: 'report_content', label: '학교폭력 신고 내용', placeholder: '통지서 내용을 기재해주세요.' },{ key: 'request', label: '요구 사항', placeholder: '원하는 조치나 처분' }],
-            'school-perpetrator': [{key: 'perpetrator_parties',label: '가해학생 정보',type: 'parties',fields: [{ key: 'perpetrator_name', label: '이름', placeholder: '가해학생 성명' },{ key: 'perpetrator_school', label: '소속', placeholder: '학교명, 학년, 반' },{ key: 'perpetrator_parent', label: '보호자 성명', placeholder: '보호자 성명' },{ key: 'perpetrator_phone', label: '보호자 연락처', placeholder: '보호자 연락처' }]},{key: 'victim_parties',label: '피해학생 정보',type: 'parties',fields: [{ key: 'victim_name', label: '이름', placeholder: '피해학생 성명' },{ key: 'victim_school', label: '소속', placeholder: '학교명, 학년, 반' }]},{ key: 'report_content', label: '학교폭력 신고 내용', placeholder: '통지서 내용을 기재해주세요.' },{ key: 'request', label: '요구 사항', placeholder: '원하는 조치나 처분' }]
-          };
-          
-          const currentQuestions = selectedSubType ? questionSets[`${selectedType}-${selectedSubType}`] : questionSets[selectedType];
-          const currentQuestion = currentQuestions?.[currentQuestionIndex];
-          const isLastQuestion = currentQuestionIndex >= (currentQuestions?.length - 1);
-          
-          const isCurrentFieldFilled = () => {
-            if (!currentQuestion) return false;
-            if (currentQuestion.type === 'parties') {
-              return currentQuestion.fields.every(field => formData[field.key] && formData[field.key].trim() !== '');
-            }
-            return formData[currentQuestion.key] && formData[currentQuestion.key].trim() !== '';
-          };
-          
-          const handleTypeSelect = (type) => {
-            setSelectedType(type);
-            const hasSubTypes = caseTypes.find(t => t.id === type)?.hasSubTypes;
-            setCurrentStep(hasSubTypes ? 1.5 : 2);
-            setSelectedSubType('');
-            setFormData({});
-            setCurrentQuestionIndex(0);
+            'civil-lease': commonCivilQuestions, 'civil-contractual-payment': commonCivilQuestions, 'civil-damages': commonCivilQuestions, 'civil-other': commonCivilQuestions,
+            'family-divorce': divorceQuestions, 'family-inheritance': commonFamilyQuestions, 'family-other': commonFamilyQuestions,
+            'school-victim': [ schoolSelfInfoFields('victim'), multiplePartiesQuestion('가해학생', 'perpetrators', schoolOpponentFields), { key: 'report_content', label: '학교폭력 신고 내용' }, otherMattersQuestion ],
+            'school-perpetrator': [ schoolSelfInfoFields('perpetrator'), multiplePartiesQuestion('피해학생', 'victims', schoolOpponentFields), { key: 'report_content', label: '학교폭력 신고 내용' }, otherMattersQuestion ],
+            administrative: [ selfInfoFields(), otherMattersQuestion ],
+            other: [ selfInfoFields(), multiplePartiesQuestion('상대방', 'opponents', [{key: 'name', label: '이름'}, {key: 'phone', label: '연락처'}]), { key: 'incident_detail', label: '사건 내용' }, otherMattersQuestion ],
+
+            'criminal-accusation-common': [ selfInfoFields('accuser'), multiplePartiesQuestion('피고소인', 'accuseds', criminalOpponentFields), partiesRelationshipQuestion(), incidentTimePlaceQuestion, { key: 'incident_detail', label: '사건 경위' }, otherMattersQuestion ],
+            'criminal-accusation-property-theft': [ selfInfoFields('accuser'), multiplePartiesQuestion('피고소인', 'accuseds', criminalOpponentFields), partiesRelationshipQuestion(), { key: 'assault_threats', label: '어떤 폭행·협박이 있었는지'}, incidentTimePlaceQuestion, { key: 'incident_detail', label: '사건 경위' }, otherMattersQuestion ],
+            'criminal-accusation-property-fraud': [ selfInfoFields('accuser'), multiplePartiesQuestion('피고소인', 'accuseds', criminalOpponentFields), partiesRelationshipQuestion(), incidentTimePlaceQuestion, { key: 'damage_amount', label: '피해 금액' }, { key: 'contract_details', label: '당사자 계약의 내용' }, { key: 'loss_details', label: '재산손실 발생의 경위' }, otherMattersQuestion ],
+            'criminal-accusation-property-embezzlement': [ selfInfoFields('accuser'), multiplePartiesQuestion('피고소인', 'accuseds', criminalOpponentFields), { key: 'company_info', label: '회사 정보' }, partiesRelationshipQuestion('당사자들의 직책과 무엇을 관리했는지 기재해주세요.'), { key: 'damage_amount', label: '피해액'}, otherMattersQuestion ],
+            'criminal-accusation-traffic': [ selfInfoFields('accuser'), multiplePartiesQuestion('상대방', 'opponents', [{key:'name', label:'이름'}, {key:'phone', label:'연락처'}, {key:'vehicle_number', label: '차량번호'}]), incidentTimePlaceQuestion, { key: 'damage_details', label: '피해 내용' }, { key: 'insurance_status', label: '보험처리 여부' }, otherMattersQuestion ],
+            'criminal-accusation-sexual': [ selfInfoFields('accuser'), multiplePartiesQuestion('상대방', 'opponents', criminalOpponentFields), isOpponentMinorQuestion, partiesRelationshipQuestion(), incidentTimePlaceQuestion, { key: 'incident_detail', label: '사건 경위' }, otherMattersQuestion ],
+            'criminal-suspect-common': [ isSelfMinorQuestion, selfInfoFields(), multiplePartiesQuestion('고소인', 'accusers', criminalOpponentFields), partiesRelationshipQuestion(), incidentTimePlaceQuestion, { key: 'incident_detail', label: '사건에 대한 본인의 입장' }, otherMattersQuestion ],
           };
 
-          const handleSubTypeSelect = (subType) => {
-            setSelectedSubType(subType);
-            setCurrentStep(2);
-            setFormData({});
-            setCurrentQuestionIndex(0);
-          };
-
-          const handleNextStep = () => {
-            if (currentStep === 2) {
-              if (isLastQuestion) {
-                generateAndSaveReport();
-              } else {
-                setCurrentQuestionIndex(prev => prev + 1);
+          // --- 로직 함수 ---
+          const getQuestionSetKey = () => {
+              if (selectedType === 'civil') return `civil-${selectedCivilType}`;
+              if (selectedType === 'family') return `family-${selectedFamilyType}`;
+              if (selectedType === 'criminal') {
+                  const baseKey = `${selectedType}-${selectedSubType}`;
+                  if (selectedSubType === 'accusation') {
+                      if (selectedCrimeType === 'property') {
+                          const specificKey = `${baseKey}-property-${selectedPropertyCrimeType}`;
+                          if (questionSets[specificKey]) return specificKey;
+                      }
+                      const crimeTypeKey = `${baseKey}-${selectedCrimeType}`;
+                      if (questionSets[crimeTypeKey]) return crimeTypeKey;
+                      return `${baseKey}-common`;
+                  }
+                  return `${baseKey}-common`;
               }
-            } else {
-              setCurrentStep(prev => prev + 1);
-            }
+              if (selectedType === 'other') return 'other';
+              return selectedSubType ? `${selectedType}-${selectedSubType}` : selectedType;
           };
 
+          const currentQuestions = questionSets[getQuestionSetKey()] || [];
+          const currentQuestion = currentQuestions[currentQuestionIndex];
+          const isLastQuestion = currentQuestionIndex >= (currentQuestions.length - 1);
+          
+          const resetToStep = (step) => { setCurrentStep(step); setFormData({}); setCurrentQuestionIndex(0); };
+          const handleTypeSelect = (type) => { setSelectedType(type); const hasSubTypes = caseTypes.find(t => t.id === type)?.hasSubTypes; resetToStep(hasSubTypes ? 1.5 : 2); setSelectedCivilType(''); setSelectedFamilyType(''); setSelectedSubType(''); setSelectedCrimeType(''); setSelectedPropertyCrimeType(''); };
+          const handleCivilTypeSelect = (civilType) => { setSelectedCivilType(civilType); resetToStep(2); };
+          const handleFamilyTypeSelect = (familyType) => { setSelectedFamilyType(familyType); resetToStep(2); };
+          const handleSubTypeSelect = (subType) => { setSelectedSubType(subType); resetToStep(selectedType === 'criminal' ? 1.6 : 2); };
+          const handleCrimeTypeSelect = (crimeType) => { setSelectedCrimeType(crimeType); const type = crimeTypes.find(t => t.id === crimeType); resetToStep(type.hasSubTypes ? 1.7 : 2); setSelectedPropertyCrimeType(''); };
+          const handlePropertyCrimeTypeSelect = (propertyCrimeType) => { setSelectedPropertyCrimeType(propertyCrimeType); resetToStep(2); };
+
+          const handleNextStep = () => { isLastQuestion ? generateReport() : setCurrentQuestionIndex(prev => prev + 1); };
           const handlePrevStep = () => {
              if (currentStep === 2) {
-                if (currentQuestionIndex > 0) {
-                   setCurrentQuestionIndex(prev => prev - 1);
-                } else {
-                   const hasSubTypes = caseTypes.find(t => t.id === selectedType)?.hasSubTypes;
-                   setCurrentStep(hasSubTypes ? 1.5 : 1);
+                if (currentQuestionIndex > 0) { setCurrentQuestionIndex(prev => prev - 1); } 
+                else {
+                   if (selectedType === 'civil' || selectedType === 'family') { setCurrentStep(1.5); }
+                   else if(selectedType === 'criminal') {
+                       if(selectedPropertyCrimeType) { setCurrentStep(1.7); } 
+                       else if (selectedCrimeType) { setCurrentStep(1.6); } 
+                       else { setCurrentStep(1.5); }
+                   } else if (caseTypes.find(t => t.id === selectedType)?.hasSubTypes) { setCurrentStep(1.5); } 
+                   else { setCurrentStep(1); }
                 }
-             } else {
-                setCurrentStep(prev => prev - 1);
+             } else if (currentStep > 1) {
+                setCurrentStep(prev => { if(prev === 1.7) return 1.6; if(prev === 1.6) return 1.5; if(prev === 1.5) return 1; return 1; });
              }
           };
 
-          const handleInputChange = (key, value) => {
-            setFormData(prev => ({ ...prev, [key]: value }));
+          const handleInputChange = (key, value) => { setFormData(prev => ({ ...prev, [key]: value })); };
+          
+          const handleMultiplePartyInputChange = (partyKey, index, fieldKey, value) => {
+              const updatedParties = [...(formData[partyKey] || [])];
+              updatedParties[index] = { ...updatedParties[index], [fieldKey]: value };
+              setFormData(prev => ({ ...prev, [partyKey]: updatedParties }));
+          };
+
+          const addParty = (partyKey, fields) => {
+              const newParty = fields.reduce((acc, field) => ({ ...acc, [field.key]: '' }), {});
+              setFormData(prev => ({ ...prev, [partyKey]: [...(prev[partyKey] || []), newParty] }));
+          };
+
+          const removeParty = (partyKey, index) => {
+              setFormData(prev => ({ ...prev, [partyKey]: prev[partyKey].filter((_, i) => i !== index) }));
           };
           
-          const generateAndSaveReport = () => {
-            const typeInfo = caseTypes.find(t => t.id === selectedType);
-            const questions = selectedSubType ? questionSets[`${selectedType}-${selectedSubType}`] : questionSets[selectedType];
-            
+          const generateReport = () => {
             let reportText = `경 위 서\n\n`;
+            const typeInfo = caseTypes.find(t => t.id === selectedType);
+            
             reportText += `사건 유형: ${typeInfo.name}`;
-            if (selectedSubType) {
-                const subTypeInfo = subTypes[selectedType].find(s => s.id === selectedSubType);
-                if (subTypeInfo) reportText += ` - ${subTypeInfo.name}`;
-            }
+            if(selectedType === 'civil' && selectedCivilType) { const civilTypeInfo = civilTypes.find(c => c.id === selectedCivilType); if (civilTypeInfo) reportText += ` - ${civilTypeInfo.name}`; }
+            if(selectedType === 'family' && selectedFamilyType) { const familyTypeInfo = familyTypes.find(f => f.id === selectedFamilyType); if (familyTypeInfo) reportText += ` - ${familyTypeInfo.name}`; }
+            if (selectedSubType && subTypes[selectedType]) { const subTypeInfo = subTypes[selectedType].find(s => s.id === selectedSubType); if (subTypeInfo) reportText += ` - ${subTypeInfo.name}`; }
+            if (selectedCrimeType) { const crimeTypeInfo = crimeTypes.find(c => c.id === selectedCrimeType); if(crimeTypeInfo) reportText += ` > ${crimeTypeInfo.name}`; }
+            if (selectedPropertyCrimeType) { const propCrimeTypeInfo = propertyCrimeTypes.find(p => p.id === selectedPropertyCrimeType); if(propCrimeTypeInfo) reportText += ` > ${propCrimeTypeInfo.name}`; }
             reportText += `\n작성일: ${new Date().toLocaleDateString('ko-KR')}\n\n`;
             
-            questions.forEach(q => {
+            currentQuestions.forEach(q => {
+                let hasContent = false;
+                let questionContent = '';
+
                 if (q.type === 'parties') {
-                    reportText += `${q.label}\n`;
-                    q.fields.forEach(field => {
-                        if (formData[field.key]) reportText += `  ${field.label}: ${formData[field.key]}\n`;
-                    });
-                    reportText += `\n`;
-                } else if (formData[q.key]) {
-                    reportText += `${q.label}\n${formData[q.key]}\n\n`;
+                    q.fields.forEach(field => { const value = formData[field.key] || ''; if (value.trim() !== '') hasContent = true; });
+                     if(hasContent) { q.fields.forEach(field => { const value = formData[field.key] || ''; questionContent += `  ${field.label}: ${value}\n`; }); }
+                } else if (q.type === 'multipleParties') {
+                    const parties = formData[q.partyKey] || [];
+                    if(parties.some(p => Object.values(p).some(val => val.trim() !== ''))) hasContent = true;
+                    if(hasContent) {
+                        parties.forEach((party, index) => {
+                            questionContent += `  ${q.partyName} ${index + 1}\n`;
+                            q.fields.forEach(field => {
+                               const value = party[field.key] || '';
+                               const outputValue = value.trim() === '' ? '정보 불상' : value;
+                               questionContent += `    - ${field.label}: ${outputValue}\n`;
+                            });
+                        });
+                    }
+                } else if (q.type === 'yesno') {
+                    q.fields.forEach(field => { if (formData[field.key]) hasContent = true; questionContent += `  ${field.label}: ${formData[field.key] === 'yes' ? '예' : (formData[field.key] === 'no' ? '아니오' : '미선택')}\n`; });
+                } else if (formData[q.key] && formData[q.key].trim() !== '') {
+                    hasContent = true;
+                    questionContent = `${formData[q.key]}\n`;
                 }
+
+                if(hasContent){ reportText += `[${q.label}]\n`; reportText += questionContent; reportText += `\n`; }
             });
             
-            reportText += `위와 같은 사실을 확인하여 경위서를 작성합니다.\n\n`;
-            reportText += `작성자: [성명을 기입하세요]\n`;
-            reportText += `연락처: [연락처를 기입하세요]\n`;
-            reportText += `주소: [주소를 기입하세요]`;
-            
+            reportText += `위와 같은 사실을 확인하여 경위서를 작성합니다.\n`;
             setGeneratedReport(reportText);
             setCurrentStep(3);
           };
 
-          const newReport = () => {
-            setCurrentStep(1);
-            setSelectedType('');
-            setSelectedSubType('');
-            setFormData({});
-            setCurrentQuestionIndex(0);
-            setGeneratedReport('');
-            setShowReportsList(false);
-          };
-
-          const downloadReport = () => {
-            const element = document.createElement("a");
-            const file = new Blob([generatedReport], {type: 'text/plain;charset=utf-8'});
-            element.href = URL.createObjectURL(file);
-            element.download = `경위서_${new Date().toISOString().slice(0,10).replace(/-/g,"")}.txt`;
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
-            setStatusMessage('파일이 다운로드되었습니다.');
-            setTimeout(() => setStatusMessage(''), 3000);
-          };
-
-          const copyReport = () => {
-            if (navigator.clipboard) {
-              navigator.clipboard.writeText(generatedReport).then(() => {
-                setStatusMessage('클립보드에 복사되었습니다.');
-                setTimeout(() => setStatusMessage(''), 3000);
-              }).catch(err => {
-                setStatusMessage('복사에 실패했습니다.');
-                setTimeout(() => setStatusMessage(''), 3000);
-              });
-            } else { // Fallback
-              const textArea = document.createElement("textarea");
-              textArea.value = generatedReport;
-              document.body.appendChild(textArea);
-              textArea.select();
-              try {
-                document.execCommand('copy');
-                setStatusMessage('클립보드에 복사되었습니다.');
-              } catch (err) {
-                setStatusMessage('복사에 실패했습니다.');
-              }
-              document.body.removeChild(textArea);
-              setTimeout(() => setStatusMessage(''), 3000);
+          useEffect(() => {
+            if (currentQuestion && currentQuestion.type === 'multipleParties') {
+                const { partyKey, fields } = currentQuestion;
+                if (!formData[partyKey] || formData[partyKey].length === 0) {
+                    addParty(partyKey, fields);
+                }
             }
-          };
+          }, [currentQuestion]);
+
+
+          const newReport = () => { setCurrentStep(1); setSelectedType(''); setSelectedCivilType(''); setSelectedFamilyType(''); setSelectedSubType(''); setSelectedCrimeType(''); setSelectedPropertyCrimeType(''); setFormData({}); setCurrentQuestionIndex(0); setGeneratedReport(''); };
+          const downloadReport = () => { const element = document.createElement("a"); const file = new Blob([generatedReport], {type: 'text/plain;charset=utf-8'}); element.href = URL.createObjectURL(file); element.download = `경위서.txt`; document.body.appendChild(element); element.click(); document.body.removeChild(element); setStatusMessage('파일 다운로드 완료'); setTimeout(() => setStatusMessage(''), 3000); };
+          const copyReport = () => { navigator.clipboard.writeText(generatedReport).then(() => { setStatusMessage('클립보드에 복사되었습니다.'); setTimeout(() => setStatusMessage(''), 3000); }); };
+          const StepButton = ({ onClick, children }) => ( <button onClick={onClick} className="p-6 bg-gray-800 rounded-xl shadow-md border border-gray-700 hover:shadow-lg hover:border-blue-500 transition-all duration-200 transform hover:-translate-y-1 w-full"><h3 className="text-lg font-bold text-gray-100 mb-2">{children}</h3></button> );
+
+          const isCurrentQuestionAnswered = () => {
+            if (!currentQuestion) return false;
+            if (currentQuestion.key && currentQuestion.key.includes('_info') && currentQuestion.type === 'parties') { return true; }
+            if (currentQuestion.type === 'multipleParties') { return true; }
+            if (currentQuestion.type === 'yesno') { return currentQuestion.fields.every(field => formData[field.key]); }
+            return formData[currentQuestion.key] && formData[currentQuestion.key].trim() !== '';
+          }
           
           return (
              <div className="min-h-screen bg-gray-950 text-gray-200 font-sans p-4 sm:p-8">
@@ -211,144 +250,92 @@
                         <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">경위서 도우미</h1>
                         <p className="text-lg text-gray-400">간단한 단계로 법적 경위서를 작성하세요.</p>
                     </div>
-                    
-                    {statusMessage && (
-                      <div className="my-4 p-3 rounded-lg bg-blue-800 text-blue-100 text-sm text-center font-medium transition-opacity duration-300">
-                        {statusMessage}
-                      </div>
-                    )}
+                    {statusMessage && ( <div className="my-4 p-3 rounded-lg bg-blue-800 text-blue-100 text-sm text-center font-medium">{statusMessage}</div> )}
 
-                    {!showReportsList && (
-                        <AnimatePresence>
-                        {currentStep === 1 && (
-                            <MotionDiv key="step1">
-                                <h2 className="text-2xl font-semibold text-center mb-8 text-white">어떤 유형의 사건인가요?</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {caseTypes.map((type) => (
-                                        <button key={type.id} onClick={() => handleTypeSelect(type.id)}
-                                            className="p-6 bg-gray-800 rounded-xl shadow-md border border-gray-700 hover:shadow-lg hover:border-blue-500 transition-all duration-200 transform hover:-translate-y-1">
-                                            <div 
-                                                className={`w-14 h-14 ${type.color} rounded-full flex items-center justify-center mx-auto mb-4`}
-                                                dangerouslySetInnerHTML={{ __html: type.iconSvg }}
-                                            >
-                                            </div>
-                                            <h3 className="text-lg font-bold text-gray-100 mb-2">{type.name}</h3>
-                                        </button>
-                                    ))}
-                                </div>
-                            </MotionDiv>
-                        )}
-                        {currentStep === 1.5 && (
-                             <MotionDiv key="step1.5">
-                                 <h2 className="text-2xl font-semibold text-center mb-8 text-white">세부 유형을 선택해주세요.</h2>
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     {subTypes[selectedType].map((subType) => (
-                                         <button key={subType.id} onClick={() => handleSubTypeSelect(subType.id)}
-                                             className="p-6 bg-gray-800 rounded-xl shadow-md border border-gray-700 hover:shadow-lg hover:border-blue-500 transition-all duration-200 transform hover:-translate-y-1">
-                                             <h3 className="text-lg font-bold text-gray-100 mb-2">{subType.name}</h3>
-                                         </button>
-                                     ))}
-                                 </div>
-                                  <div className="text-center mt-8">
-                                    <button onClick={() => setCurrentStep(1)} className="px-6 py-2 text-gray-400 border border-gray-700 rounded-full hover:bg-gray-800 transition-colors shadow-sm">
-                                      이전
-                                    </button>
-                                  </div>
-                             </MotionDiv>
-                        )}
-                        {currentStep === 2 && currentQuestion && (
-                            <MotionDiv key="step2">
-                                <h2 className="text-2xl font-bold mb-6 text-white text-center">사건 정보 입력</h2>
-                                <div className="w-full bg-gray-700 rounded-full h-2.5 mb-8">
-                                    <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${((currentQuestionIndex + 1) / currentQuestions.length) * 100}%` }}></div>
-                                </div>
-                                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 space-y-8">
-                                    <div>
-                                        <label className="block text-lg font-bold text-gray-300 mb-2">{currentQuestion.label}</label>
-                                        {currentQuestion.type === 'parties' ? (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                {currentQuestion.fields.map((field) => (
-                                                    <input key={field.key} type="text"
-                                                        className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white"
-                                                        placeholder={field.placeholder}
-                                                        value={formData[field.key] || ''}
-                                                        onChange={(e) => handleInputChange(field.key, e.target.value)} />
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <textarea className="w-full p-4 bg-gray-900 border border-gray-700 rounded-lg text-white"
-                                                rows="4"
-                                                placeholder={currentQuestion.placeholder}
-                                                value={formData[currentQuestion.key] || ''}
-                                                onChange={(e) => handleInputChange(currentQuestion.key, e.target.value)} />
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex justify-between items-center mt-8">
-                                    <button onClick={handlePrevStep} className="px-6 py-3 text-gray-400 border border-gray-700 rounded-full">이전</button>
-                                    <button onClick={handleNextStep} disabled={!isCurrentFieldFilled()}
-                                      className={`px-8 py-3 text-white rounded-full ${!isCurrentFieldFilled() ? 'bg-blue-800 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'}`}>
-                                      {isLastQuestion ? '경위서 생성하기' : '다음'}
-                                    </button>
-                                </div>
-                            </MotionDiv>
-                        )}
-                        {currentStep === 3 && (
-                           <MotionDiv key="step3">
-                                <div className="bg-gray-800 p-6 sm:p-8 rounded-xl border border-gray-700 shadow-inner">
-                                    <div className="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0">
-                                        <h2 className="text-2xl font-bold text-white">생성된 경위서</h2>
-                                        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
-                                            <button
-                                                onClick={downloadReport}
-                                                className="w-full sm:w-auto px-5 py-3 bg-green-600 text-white rounded-full hover:bg-green-500 flex items-center justify-center transition-colors shadow-md"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                                다운로드 (.txt)
-                                            </button>
-                                            <button
-                                                onClick={copyReport}
-                                                className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-500 flex items-center justify-center transition-colors shadow-md"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                                클립보드에 복사
-                                            </button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="bg-gray-900 p-6 rounded-lg border border-gray-700 shadow-inner">
-                                        <pre className="whitespace-pre-wrap font-mono text-sm sm:text-base leading-relaxed text-gray-300">
-                                            {generatedReport}
-                                        </pre>
-                                    </div>
-                                    
-                                     <div className="mt-6 text-center">
-                                        <button
-                                            onClick={newReport}
-                                            className="px-6 py-3 bg-gray-700 text-white rounded-full hover:bg-gray-600 transition-colors shadow-md font-bold"
-                                        >
-                                            새로운 경위서 작성
-                                        </button>
-                                    </div>
-                                    
-                                    <div className="mt-6 p-4 rounded-xl bg-yellow-900 border-l-4 border-yellow-700">
-                                        <div className="flex items-start">
-                                            <svg className="w-6 h-6 text-yellow-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.725-1.125 2.371-1.125 3.096 0L15.684 9.1c.42.65.42 1.458 0 2.108l-5.684 8.783c-.725 1.125-2.371 1.125-3.096 0L1.316 11.208c-.42-.65-.42-1.458 0-2.108L8.257 3.099zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 8a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" /></svg>
-                                            <div>
-                                                <p className="text-sm text-yellow-300 font-semibold mb-1">
-                                                    주의사항:
-                                                </p>
-                                                <p className="text-sm text-yellow-300">
-                                                    생성된 경위서는 참고용이며, 실제 법적 절차에서는 변호사의 검토를 받으시는 것이 중요합니다. 개인정보나 민감한 정보는 신중하게 기재해 주세요.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                           </MotionDiv>
-                        )}
-                        </AnimatePresence>
+                    <AnimatePresence>
+                    {currentStep === 1 && (
+                        <MotionDiv key="step1">
+                            <h2 className="text-2xl font-semibold text-center mb-8 text-white">어떤 유형의 사건인가요?</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">{caseTypes.map((type) => ( <button key={type.id} onClick={() => handleTypeSelect(type.id)} className="p-6 bg-gray-800 rounded-xl shadow-md border border-gray-700 hover:shadow-lg hover:border-blue-500 transition-all duration-200 transform hover:-translate-y-1"><div dangerouslySetInnerHTML={{ __html: type.iconSvg }} className={`w-14 h-14 ${type.color} rounded-full flex items-center justify-center mx-auto mb-4`}></div><h3 className="text-lg font-bold text-gray-100 mb-2">{type.name}</h3></button> ))}</div>
+                        </MotionDiv>
                     )}
+                    {currentStep === 1.5 && (
+                         <MotionDiv key="step1.5">
+                             <h2 className="text-2xl font-semibold text-center mb-8 text-white">2. 세부 유형을 선택해주세요.</h2>
+                             { selectedType === 'civil' && <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{civilTypes.map((cType) => ( <StepButton key={cType.id} onClick={() => handleCivilTypeSelect(cType.id)}>{cType.name}</StepButton> ))}</div> }
+                             { selectedType === 'family' && <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{familyTypes.map((fType) => ( <StepButton key={fType.id} onClick={() => handleFamilyTypeSelect(fType.id)}>{fType.name}</StepButton> ))}</div> }
+                             { (selectedType === 'criminal' || selectedType === 'school') && <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{subTypes[selectedType].map((subType) => ( <StepButton key={subType.id} onClick={() => handleSubTypeSelect(subType.id)}>{subType.name}</StepButton> ))}</div> }
+                             <div className="text-center mt-8"><button onClick={handlePrevStep} className="px-6 py-2 text-gray-400 border border-gray-700 rounded-full hover:bg-gray-800">이전</button></div>
+                         </MotionDiv>
+                    )}
+                    {currentStep === 1.6 && (
+                         <MotionDiv key="step1.6">
+                             <h2 className="text-2xl font-semibold text-center mb-8 text-white">3. 범죄 유형을 선택해주세요.</h2>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{crimeTypes.map((crimeType) => ( <StepButton key={crimeType.id} onClick={() => handleCrimeTypeSelect(crimeType.id)}>{crimeType.name}</StepButton> ))}</div>
+                             <div className="text-center mt-8"><button onClick={handlePrevStep} className="px-6 py-2 text-gray-400 border border-gray-700 rounded-full hover:bg-gray-800">이전</button></div>
+                         </MotionDiv>
+                    )}
+                    {currentStep === 1.7 && (
+                         <MotionDiv key="step1.7">
+                             <h2 className="text-2xl font-semibold text-center mb-8 text-white">4. 재산범죄의 세부 유형을 선택해주세요.</h2>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{propertyCrimeTypes.map((propCrimeType) => ( <StepButton key={propCrimeType.id} onClick={() => handlePropertyCrimeTypeSelect(propCrimeType.id)}>{propCrimeType.name}</StepButton> ))}</div>
+                             <div className="text-center mt-8"><button onClick={handlePrevStep} className="px-6 py-2 text-gray-400 border border-gray-700 rounded-full hover:bg-gray-800">이전</button></div>
+                         </MotionDiv>
+                    )}
+                    {currentStep === 2 && currentQuestion && (
+                        <MotionDiv key="step2">
+                            <h2 className="text-2xl font-bold mb-6 text-white text-center">사건 정보 입력 ({currentQuestionIndex + 1}/{currentQuestions.length})</h2>
+                            <div className="w-full bg-gray-700 rounded-full h-2.5 mb-8"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${((currentQuestionIndex + 1) / currentQuestions.length) * 100}%` }}></div></div>
+                            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 space-y-8">
+                                <div>
+                                    <label className="block text-lg font-bold text-gray-300 mb-2">{currentQuestion.label}</label>
+                                    {currentQuestion.description && <p className="text-sm text-gray-400 mb-4">{currentQuestion.description}</p>}
+                                    {currentQuestion.type === 'parties' && ( <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{currentQuestion.fields.map((field) => ( <input key={field.key} type="text" className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white" placeholder={field.placeholder} value={formData[field.key] || ''} onChange={(e) => handleInputChange(field.key, e.target.value)} /> ))}</div> )}
+                                    {currentQuestion.type === 'multipleParties' && (
+                                        <div className="space-y-4">
+                                            {(formData[currentQuestion.partyKey] || []).map((party, index) => (
+                                                <div key={index} className="bg-gray-900 p-4 rounded-lg relative">
+                                                     <div className="flex justify-between items-center mb-3">
+                                                        <h4 className="font-semibold text-gray-400">{currentQuestion.partyName} {index + 1}</h4>
+                                                        { (formData[currentQuestion.partyKey].length > 1) && <button onClick={() => removeParty(currentQuestion.partyKey, index)} className="text-red-500 hover:text-red-400 text-2xl leading-none">&times;</button> }
+                                                     </div>
+                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        {currentQuestion.fields.map(field => (
+                                                            <input key={field.key} type="text" className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white" placeholder={field.label} value={party[field.key] || ''} onChange={(e) => handleMultiplePartyInputChange(currentQuestion.partyKey, index, field.key, e.target.value)} />
+                                                        ))}
+                                                     </div>
+                                                </div>
+                                            ))}
+                                            <button onClick={() => addParty(currentQuestion.partyKey, currentQuestion.fields)} className="w-full p-2 text-sm bg-blue-600 hover:bg-blue-500 rounded-lg">+ {currentQuestion.partyName} 추가</button>
+                                        </div>
+                                    )}
+                                    {currentQuestion.type !== 'parties' && currentQuestion.type !== 'yesno' && currentQuestion.type !== 'multipleParties' && ( <div><textarea className="w-full p-4 bg-gray-900 border border-gray-700 rounded-lg text-white" rows="5" placeholder={currentQuestion.placeholder} value={formData[currentQuestion.key] || ''} onChange={(e) => handleInputChange(currentQuestion.key, e.target.value)} /><CharacterCounter text={formData[currentQuestion.key]} /></div> )}
+                                    {currentQuestion.type === 'yesno' && ( <div className="space-y-4">{currentQuestion.fields.map(field => ( <div key={field.key} className="flex items-center justify-between bg-gray-900 p-4 rounded-lg"><label className="text-gray-300">{field.label}</label><div className="flex space-x-4"> <label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name={field.key} checked={formData[field.key] === 'yes'} onChange={() => handleInputChange(field.key, 'yes')} className="form-radio h-5 w-5 text-blue-500 bg-gray-700 border-gray-600" /><span>예</span></label><label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name={field.key} checked={formData[field.key] === 'no'} onChange={() => handleInputChange(field.key, 'no')} className="form-radio h-5 w-5 text-blue-500 bg-gray-700 border-gray-600" /><span>아니오</span></label></div></div> ))}</div> )}
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center mt-8">
+                                <button onClick={handlePrevStep} className="px-6 py-3 text-gray-400 border border-gray-700 rounded-full">이전</button>
+                                <button onClick={handleNextStep} disabled={!isCurrentQuestionAnswered()} className={`px-8 py-3 text-white rounded-full ${!isCurrentQuestionAnswered() ? 'bg-blue-800 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'}`}>{isLastQuestion ? '경위서 생성하기' : '다음'}</button>
+                            </div>
+                        </MotionDiv>
+                    )}
+                    {currentStep === 3 && (
+                       <MotionDiv key="step3">
+                            <div className="bg-gray-800 p-6 sm:p-8 rounded-xl border border-gray-700 shadow-inner">
+                                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0">
+                                    <h2 className="text-2xl font-bold text-white">생성된 경위서</h2>
+                                    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+                                        <button onClick={downloadReport} className="w-full sm:w-auto px-5 py-3 bg-green-600 text-white rounded-full hover:bg-green-500 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>다운로드 (.txt)</button>
+                                        <button onClick={copyReport} className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-500 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>클립보드에 복사</button>
+                                    </div>
+                                </div>
+                                <div className="bg-gray-900 p-6 rounded-lg border border-gray-700 shadow-inner"><pre className="whitespace-pre-wrap font-mono text-sm sm:text-base leading-relaxed text-gray-300">{generatedReport}</pre></div>
+                                <div className="mt-6 text-center"><button onClick={newReport} className="px-6 py-3 bg-gray-700 text-white rounded-full hover:bg-gray-600 font-bold">새로운 경위서 작성</button></div>
+                                <div className="mt-6 p-4 rounded-xl bg-yellow-900 border-l-4 border-yellow-700"><div className="flex items-start"><svg className="w-6 h-6 text-yellow-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.725-1.125 2.371-1.125 3.096 0L15.684 9.1c.42.65.42 1.458 0 2.108l-5.684 8.783c.725 1.125-2.371 1.125-3.096 0L1.316 11.208c-.42-.65-.42-1.458 0-2.108L8.257 3.099zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 8a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" /></svg><div><p className="text-sm text-yellow-300 font-semibold mb-1">주의사항:</p><p className="text-sm text-yellow-300">생성된 경위서는 참고용이며, 실제 법적 절차에서는 변호사의 검토를 받으시는 것이 중요합니다.</p></div></div></div>
+                            </div>
+                       </MotionDiv>
+                    )}
+                    </AnimatePresence>
                 </div>
             </div>
           );
